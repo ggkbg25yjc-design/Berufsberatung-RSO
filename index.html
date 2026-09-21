@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Berufsfelder-Abfrage</title>
+<style>
+:root {
+  --bg: #f6f7f9; --card: #ffffff; --text: #1b1f24; --muted: #6a737d;
+  --line: #d9dde2; --accent: #1f6feb; --accent-text: #ffffff;
+  --yes: #2da44e; --no: #6a737d;
+  --cA: #1f77d0; --cB: #f2c200; --cC: #7b3fb0; --cD: #7dc242; --cE: #e02b20; --cF: #ffffff;
+  --onA: #fff; --onB: #1b1f24; --onC: #fff; --onD: #1b1f24; --onE: #fff; --onF: #1b1f24;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14171b; --card: #1e2329; --text: #eef1f4; --muted: #9aa4af;
+    --line: #333a42; --accent: #4c8dff; --accent-text: #0b0f14;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14171b; --card: #1e2329; --text: #eef1f4; --muted: #9aa4af;
+  --line: #333a42; --accent: #4c8dff; --accent-text: #0b0f14;
+}
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  min-height: 100vh;
+}
+main { max-width: 560px; margin: 0 auto; padding: 16px; }
+h1 { font-size: 20px; margin: 4px 0 2px; }
+.sub { color: var(--muted); font-size: 14px; margin: 0 0 14px; }
+.progress { height: 8px; background: var(--line); border-radius: 6px; overflow: hidden; margin-bottom: 8px; }
+.progress > div { height: 100%; background: var(--accent); width: 0; transition: width .3s; }
+.count { color: var(--muted); font-size: 14px; margin-bottom: 12px; min-height: 18px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 22px 18px; text-align: center; }
+.emoji { font-size: 96px; line-height: 1.1; margin: 0; }
+.qnum { font-size: 26px; font-weight: 700; margin: 8px 0 0; }
+.answers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+.ans {
+  height: 84px; border-radius: 16px; border: 2px solid var(--line); background: var(--card);
+  color: var(--text); font-size: 28px; font-weight: 700; cursor: pointer;
+}
+.ans.yes.sel { background: var(--yes); border-color: var(--yes); color: #fff; }
+.ans.no.sel { background: var(--no); border-color: var(--no); color: #fff; }
+.btn {
+  width: 100%; height: 50px; border-radius: 14px; border: 1px solid var(--line); font-size: 16px;
+  font-weight: 600; cursor: pointer; margin-top: 14px; background: transparent; color: var(--text);
+}
+.btn:disabled { opacity: .35; }
+.btn.primary { background: var(--accent); color: var(--accent-text); border: none; }
+.mid { padding: 34px 18px; }
+.mid p { font-size: 20px; font-weight: 600; line-height: 1.35; margin: 8px 0 0; }
+.row { display: flex; align-items: center; gap: 10px; margin: 12px 0; }
+.chip {
+  width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 17px; border: 2px solid var(--line); flex: none;
+}
+.bar { flex: 1; height: 28px; background: var(--bg); border-radius: 8px; overflow: hidden; border: 1px solid var(--line); }
+.fill { height: 100%; border-radius: 7px 0 0 7px; transition: width .5s; }
+.num { width: 30px; text-align: right; font-weight: 700; }
+.row.top .chip { box-shadow: 0 0 0 3px var(--accent); }
+.res { text-align: left; padding: 16px; }
+.res-title { font-size: 18px; font-weight: 700; margin: 0 0 4px; }
+.note { color: var(--muted); font-size: 14px; margin: 14px 0 0; line-height: 1.4; }
+.hidden { display: none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Berufsfelder-Abfrage</h1>
+  <p class="sub" id="sub">Wir gehen die Fragen gemeinsam durch. Tippe bei jeder Frage Ja oder Nein.</p>
+
+  <section id="quiz">
+    <div class="progress"><div id="pbar"></div></div>
+    <div class="count" id="count"></div>
+    <div class="card" id="qcard">
+      <p class="emoji" id="emoji"></p>
+      <p class="qnum" id="qnum"></p>
+      <div class="answers">
+        <button class="ans yes" id="yes">Ja</button>
+        <button class="ans no" id="no">Nein</button>
+      </div>
+    </div>
+    <div class="card mid hidden" id="midcard">
+      <p class="emoji">🎉</p>
+      <p id="midtext"></p>
+      <button class="btn primary" id="midnext">Weiter</button>
+    </div>
+    <button class="btn" id="back">Zurück</button>
+  </section>
+
+  <section id="result" class="hidden">
+    <div class="card res">
+      <p class="res-title">Dein Ergebnis</p>
+      <div id="bars"></div>
+      <p class="note" id="resNote"></p>
+    </div>
+    <button class="btn primary" id="review">Antworten noch einmal ansehen</button>
+    <button class="btn" id="reset">Neu starten</button>
+  </section>
+</main>
+
+<script>
+(function () {
+  // ====== EINSTELLUNGEN ======
+  // Halbzeit-Nachricht: auf false setzen, dann wird sie nicht mehr angezeigt.
+  var HALFWAY_MESSAGE = true;
+  var HALFWAY_TEXT = "Die Hälfte habt ihr schon geschafft! Super, macht weiter so!";
+  // ===========================
+
+  var LETTERS = ["A", "B", "C", "D", "E", "F"];
+  var COLORS = { A: "var(--cA)", B: "var(--cB)", C: "var(--cC)", D: "var(--cD)", E: "var(--cE)", F: "var(--cF)" };
+  var ONCOL = { A: "var(--onA)", B: "var(--onB)", C: "var(--onC)", D: "var(--onD)", E: "var(--onE)", F: "var(--onF)" };
+
+  // Pro Frage: Emoji, Buchstaben die bei "Ja" gezählt werden (Reihenfolge = Fragen 1 bis 34)
+  var Q = [
+    ["🤝", "A"],    // 1 intensiv mit Menschen arbeiten
+    ["🧊", "DE"],   // 2 räumliches Vorstellungsvermögen
+    ["💪", "CEF"],  // 3 körperlich arbeiten
+    ["💻", "BDE"],  // 4 viel am Computer
+    ["🏭", "CD"],   // 5 Werkstatt / Fabrikhalle
+    ["🙈", "AB"],   // 6 handwerklich eher ungeschickt
+    ["🗓️", "ACEF"], // 7 Arbeit selbst einteilen
+    ["📝", "BF"],   // 8 schreiben und verwalten
+    ["⏰", "ACEF"], // 9 unregelmäßige Arbeitszeiten
+    ["⚗️", "D"],    // 10 physikalische / chemische Zusammenhänge
+    ["🍳", "CF"],   // 11 kochen und backen
+    ["📚", "BE"],   // 12 mit Texten arbeiten
+    ["📐", "D"],    // 13 technische Pläne / Zeichnungen
+    ["🛍️", "B"],    // 14 kaufen, verkaufen, beraten
+    ["⚙️", "D"],    // 15 technische Anlagen und Geräte
+    ["🔢", "BD"],   // 16 gut mit Zahlen
+    ["🩺", "A"],    // 17 kranke oder behinderte Menschen
+    ["🛠️", "CD"],   // 18 bauen, anbauen, reparieren
+    ["📋", "ABF"],  // 19 organisieren und planen
+    ["🔩", "C"],    // 20 Metall verarbeiten
+    ["🧑‍🏫", "A"],   // 21 behandeln, pflegen, erziehen, unterrichten
+    ["🌍", "BEF"],  // 22 fremde Sprachen
+    ["🏗️", "CD"],   // 23 mit Maschinen arbeiten
+    ["💬", "AF"],   // 24 durch Gespräche helfen
+    ["🎨", "E"],    // 25 gestalten oder entwerfen
+    ["🍽️", "F"],    // 26 Gäste empfangen oder bedienen
+    ["🚀", "ACE"],  // 27 sich selbständig machen
+    ["🏢", "BD"],   // 28 große Firmen
+    ["🏥", "A"],    // 29 Medizin und Gesundheit
+    ["🏛️", "B"],    // 30 Behörde / öffentlicher Dienst
+    ["🪵", "C"],    // 31 Holz bearbeiten
+    ["🧮", "D"],    // 32 Mathe, Physik, Technik
+    ["💡", "E"],    // 33 gute Ideen und Handgeschick
+    ["🥗", "F"]     // 34 Ernährung und Gesundheit
+  ];
+  var N = Q.length;
+  var MID_AFTER = Math.floor(N / 2) - 1; // Nachricht nach Frage 17 (Index 16)
+
+  var KEY = "bo-jn-v3";
+  var ans = [];      // 1 = Ja, 0 = Nein
+  var cur = 0;
+  var midSeen = false;
+  var onMid = false;
+  var $ = function (id) { return document.getElementById(id); };
+
+  function load() {
+    try {
+      var d = JSON.parse(localStorage.getItem(KEY) || "null");
+      if (d && Array.isArray(d.ans)) {
+        ans = d.ans; cur = Math.min(d.cur || 0, N - 1); midSeen = !!d.midSeen;
+      }
+    } catch (e) {}
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify({ ans: ans, cur: cur, midSeen: midSeen })); } catch (e) {}
+  }
+
+  function render() {
+    $("pbar").style.width = ((onMid ? cur + 1 : cur) / N * 100) + "%";
+    $("count").textContent = onMid ? "" : "Frage " + (cur + 1) + " von " + N;
+    $("qcard").classList.toggle("hidden", onMid);
+    $("midcard").classList.toggle("hidden", !onMid);
+    $("back").disabled = cur === 0 && !onMid;
+    if (onMid) { $("midtext").textContent = HALFWAY_TEXT; return; }
+    $("emoji").textContent = Q[cur][0];
+    $("qnum").textContent = "Frage " + (cur + 1);
+    $("yes").classList.toggle("sel", ans[cur] === 1);
+    $("no").classList.toggle("sel", ans[cur] === 0);
+  }
+
+  function advance() {
+    if (cur === N - 1) { showResult(); return; }
+    if (HALFWAY_MESSAGE && cur === MID_AFTER && !midSeen) {
+      midSeen = true; onMid = true; save(); render(); return;
+    }
+    cur++; save(); render();
+  }
+
+  function answer(v) {
+    ans[cur] = v; save(); render();
+    setTimeout(advance, 180);
+  }
+
+  function showResult() {
+    var counts = {}; LETTERS.forEach(function (l) { counts[l] = 0; });
+    for (var i = 0; i < N; i++) {
+      if (ans[i] === 1) Q[i][1].split("").forEach(function (l) { counts[l]++; });
+    }
+    var order = LETTERS.slice().sort(function (a, b) { return counts[b] - counts[a] || LETTERS.indexOf(a) - LETTERS.indexOf(b); });
+    var max = Math.max.apply(null, LETTERS.map(function (l) { return counts[l]; }));
+    var bars = $("bars"); bars.innerHTML = "";
+    order.forEach(function (l) {
+      var r = document.createElement("div");
+      r.className = "row" + (max > 0 && counts[l] === max ? " top" : "");
+      var border = l === "F" ? "var(--text)" : COLORS[l];
+      r.innerHTML =
+        '<div class="chip" style="background:' + COLORS[l] + ';color:' + ONCOL[l] + ';border-color:' + border + '">' + l + '</div>' +
+        '<div class="bar"><div class="fill" style="width:' + (max ? counts[l] / max * 100 : 0) + '%;background:' + COLORS[l] +
+        (l === "F" ? ';box-shadow:inset 0 0 0 2px var(--text)' : '') + '"></div></div>' +
+        '<div class="num">' + counts[l] + '</div>';
+      bars.appendChild(r);
+    });
+    var tops = order.filter(function (l) { return max > 0 && counts[l] === max; });
+    $("resNote").textContent = max === 0
+      ? "Du hast keine Frage mit Ja beantwortet."
+      : "Die meisten Striche hast du bei " + tops.join(" und ") + ". Merke dir deine Top-Buchstaben, gleich lösen wir auf, was dahintersteckt.";
+    $("quiz").classList.add("hidden");
+    $("result").classList.remove("hidden");
+    $("sub").textContent = "Fertig!";
+    window.scrollTo(0, 0);
+  }
+
+  function showQuiz() {
+    $("result").classList.add("hidden");
+    $("quiz").classList.remove("hidden");
+    $("sub").textContent = "Wir gehen die Fragen gemeinsam durch. Tippe bei jeder Frage Ja oder Nein.";
+    render();
+  }
+
+  $("yes").onclick = function () { answer(1); };
+  $("no").onclick = function () { answer(0); };
+  $("midnext").onclick = function () { onMid = false; cur++; save(); render(); };
+  $("back").onclick = function () {
+    if (onMid) { onMid = false; render(); return; }
+    if (cur > 0) { cur--; save(); render(); }
+  };
+  $("review").onclick = function () { cur = N - 1; onMid = false; save(); showQuiz(); };
+  $("reset").onclick = function () {
+    if (!confirm("Wirklich neu starten? Alle Antworten werden gelöscht.")) return;
+    ans = []; cur = 0; midSeen = false; onMid = false; save(); showQuiz();
+  };
+
+  load(); render();
+})();
+</script>
+</body>
+</html>
