@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Berufsorientierung</title>
+<style>
+:root {
+  --bg: #f6f7f9; --card: #ffffff; --text: #1b1f24; --muted: #6a737d;
+  --line: #d9dde2; --accent: #1f6feb; --accent-text: #ffffff; --on: #1f6feb;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14171b; --card: #1e2329; --text: #eef1f4; --muted: #9aa4af;
+    --line: #333a42; --accent: #4c8dff; --accent-text: #0b0f14; --on: #4c8dff;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14171b; --card: #1e2329; --text: #eef1f4; --muted: #9aa4af;
+  --line: #333a42; --accent: #4c8dff; --accent-text: #0b0f14; --on: #4c8dff;
+}
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  min-height: 100vh;
+}
+main { max-width: 480px; margin: 0 auto; padding: 16px; }
+h1 { font-size: 20px; margin: 4px 0 2px; }
+.sub { color: var(--muted); font-size: 14px; margin: 0 0 16px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+.qhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.qnum { font-size: 22px; font-weight: 700; }
+.nav { display: flex; gap: 8px; }
+.icon {
+  width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--bg); color: var(--text); font-size: 20px; cursor: pointer;
+}
+.icon:disabled { opacity: .35; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.opt {
+  height: 76px; border-radius: 14px; border: 2px solid var(--line);
+  background: var(--bg); color: var(--text); font-size: 30px; font-weight: 700; cursor: pointer;
+}
+.opt.on { background: var(--on); border-color: var(--on); color: var(--accent-text); }
+.hint { color: var(--muted); font-size: 13px; text-align: center; margin: 12px 0 0; }
+.btn {
+  width: 100%; height: 52px; border-radius: 14px; border: none; font-size: 17px; font-weight: 600;
+  cursor: pointer; margin-top: 14px; background: var(--accent); color: var(--accent-text);
+}
+.btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
+.dots { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
+.dot {
+  min-width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--card); color: var(--muted); font-size: 13px; cursor: pointer;
+}
+.dot.cur { border-color: var(--accent); color: var(--text); font-weight: 700; }
+.dot.done { background: var(--bg); color: var(--text); }
+.row { display: flex; align-items: center; gap: 10px; margin: 12px 0; }
+.letter { width: 28px; font-size: 22px; font-weight: 700; text-align: center; }
+.bar { flex: 1; height: 26px; background: var(--bg); border-radius: 8px; overflow: hidden; border: 1px solid var(--line); }
+.fill { height: 100%; background: var(--on); border-radius: 7px 0 0 7px; transition: width .4s; }
+.row.top .fill { background: #2da44e; }
+.count { width: 28px; text-align: right; font-weight: 600; }
+.hidden { display: none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Berufsorientierung</h1>
+  <p class="sub" id="sub">Tippe bei jeder Frage die Buchstaben an, die auf dich zutreffen.</p>
+
+  <section id="quiz">
+    <div class="card">
+      <div class="qhead">
+        <div class="qnum" id="qnum">Frage 1</div>
+        <div class="nav">
+          <button class="icon" id="prev" aria-label="Vorherige Frage">‹</button>
+          <button class="icon" id="next" aria-label="Nächste Frage">›</button>
+        </div>
+      </div>
+      <div class="grid" id="grid"></div>
+      <p class="hint">Trifft nichts zu? Nichts antippen und zur nächsten Frage.</p>
+    </div>
+    <button class="btn" id="nextBtn">Nächste Frage</button>
+    <button class="btn ghost" id="resultBtn">Auswertung anzeigen</button>
+    <div class="dots" id="dots"></div>
+  </section>
+
+  <section id="result" class="hidden">
+    <div class="card">
+      <div id="bars"></div>
+      <p class="hint" id="resultHint"></p>
+    </div>
+    <button class="btn" id="backBtn">Zurück zu den Fragen</button>
+    <button class="btn ghost" id="resetBtn">Alles zurücksetzen</button>
+  </section>
+</main>
+
+<script>
+(function () {
+  var LETTERS = ["A", "B", "C", "D", "E", "F"];
+  var MAX_Q = 60;
+  var KEY = "bo-answers-v1";
+  var answers = [[]]; // answers[i] = Array of letters for question i+1
+  var cur = 0;
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (raw) {
+        var d = JSON.parse(raw);
+        if (d && Array.isArray(d.answers) && d.answers.length) {
+          answers = d.answers; cur = Math.min(d.cur || 0, answers.length - 1);
+        }
+      }
+    } catch (e) {}
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify({ answers: answers, cur: cur })); } catch (e) {}
+  }
+  function ensure(i) { while (answers.length <= i) answers.push([]); }
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  function render() {
+    $("qnum").textContent = "Frage " + (cur + 1);
+    $("prev").disabled = cur === 0;
+    $("next").disabled = cur >= MAX_Q - 1;
+    var g = $("grid"); g.innerHTML = "";
+    LETTERS.forEach(function (l) {
+      var b = document.createElement("button");
+      b.className = "opt" + (answers[cur].indexOf(l) > -1 ? " on" : "");
+      b.textContent = l;
+      b.onclick = function () {
+        var a = answers[cur], i = a.indexOf(l);
+        if (i > -1) a.splice(i, 1); else a.push(l);
+        save(); render();
+      };
+      g.appendChild(b);
+    });
+    var d = $("dots"); d.innerHTML = "";
+    for (var i = 0; i < answers.length; i++) {
+      (function (i) {
+        var b = document.createElement("button");
+        b.className = "dot" + (i === cur ? " cur" : "") + (answers[i].length ? " done" : "");
+        b.textContent = i + 1;
+        b.onclick = function () { cur = i; save(); render(); };
+        d.appendChild(b);
+      })(i);
+    }
+  }
+
+  function go(n) {
+    if (n < 0 || n >= MAX_Q) return;
+    ensure(n); cur = n; save(); render();
+  }
+
+  function showResult() {
+    var counts = {}; LETTERS.forEach(function (l) { counts[l] = 0; });
+    answers.forEach(function (a) { a.forEach(function (l) { counts[l]++; }); });
+    var order = LETTERS.slice().sort(function (a, b) { return counts[b] - counts[a] || LETTERS.indexOf(a) - LETTERS.indexOf(b); });
+    var max = Math.max.apply(null, LETTERS.map(function (l) { return counts[l]; }));
+    var bars = $("bars"); bars.innerHTML = "";
+    order.forEach(function (l) {
+      var r = document.createElement("div");
+      r.className = "row" + (max > 0 && counts[l] === max ? " top" : "");
+      r.innerHTML = '<div class="letter">' + l + '</div><div class="bar"><div class="fill" style="width:' +
+        (max ? (counts[l] / max * 100) : 0) + '%"></div></div><div class="count">' + counts[l] + '</div>';
+      bars.appendChild(r);
+    });
+    var tops = order.filter(function (l) { return max > 0 && counts[l] === max; });
+    $("resultHint").textContent = max === 0 ? "Noch nichts angekreuzt."
+      : "Am häufigsten: " + tops.join(", ") + " (grün markiert).";
+    $("quiz").classList.add("hidden");
+    $("result").classList.remove("hidden");
+    $("sub").textContent = "Deine Auswertung";
+    window.scrollTo(0, 0);
+  }
+  function showQuiz() {
+    $("result").classList.add("hidden");
+    $("quiz").classList.remove("hidden");
+    $("sub").textContent = "Tippe bei jeder Frage die Buchstaben an, die auf dich zutreffen.";
+  }
+
+  $("prev").onclick = function () { go(cur - 1); };
+  $("next").onclick = function () { go(cur + 1); };
+  $("nextBtn").onclick = function () { go(cur + 1); };
+  $("resultBtn").onclick = showResult;
+  $("backBtn").onclick = showQuiz;
+  $("resetBtn").onclick = function () {
+    if (!confirm("Wirklich alle Antworten löschen?")) return;
+    answers = [[]]; cur = 0; save(); render(); showQuiz();
+  };
+
+  load(); render();
+})();
+</script>
+</body>
+</html>
